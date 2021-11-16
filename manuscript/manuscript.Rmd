@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Testing WORCS"
 output: github_document
 date: '`r format(Sys.time(), "%d %B, %Y")`'
 bibliography: references.bib
@@ -7,40 +7,49 @@ knit: worcs::cite_all
 ---
 
 ```{r setup, include=FALSE}
-library("worcs")
-# We recommend that you prepare your raw data for analysis in 'prepare_data.R',
-# and end that file with either open_data(yourdata), or closed_data(yourdata).
-# Then, uncomment the line below to load the original or synthetic data
-# (whichever is available), to allow anyone to reproduce your code:
-# load_data()
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = "center")
+
+library(worcs)
+library(here)
+library(dplyr)
+library(tidygraph)
+library(ggraph)
 ```
 
-This manuscript uses the Workflow for Open Reproducible Code in Science [@vanlissaWORCSWorkflowOpen2020] to ensure reproducibility and transparency. All code <!--and data--> are available at <git@github.com:christine-hvw/worcs_test.git>.
+This manuscript uses the Workflow for Open Reproducible Code in Science [@vanlissaWORCSWorkflowOpen2020] to ensure reproducibility and transparency. All code <!--and data--> are available at <https://github.com/christine-hvw/worcs_test>.
 
-This is an example of a non-essential citation [@@vanlissaWORCSWorkflowOpen2020]. If you change the rendering function to `worcs::cite_essential`, it will be removed.
+# The Socium Coauthorship Network
 
-<!--The function below inserts a notification if the manuscript is knit using synthetic data. Make sure to insert it after load_data().-->
-`r notify_synthetic()`
+The data contains information on co-authorship in the [Socium research center](https://www.socium.uni-bremen.de/) (University of Bremen) between 2010 and 2020.
 
-## GitHub Documents
-
-This is an R Markdown format used for publishing markdown documents to GitHub. When you click the **Knit** button all R code chunks are run and a markdown file (.md) suitable for publishing to GitHub is generated.
-
-## Including Code
-
-You can include R code in the document as follows:
-
-```{r cars}
-summary(cars)
+```{r data}
+net_soc <- readRDS(here("data-processed", "net_soc.rds"))
 ```
 
-## Including Plots
+## Department Assortativity
 
-You can also embed plots, for example:
+Let's inspect with plot whether co-authorship tends to be more prevalent within than across departments:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r plot}
+ggraph(net_soc, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(aes(fill = as.factor(dep_cat)), 
+                  shape = 21, size = 2) +
+  labs(fill = "Department", caption = "Co-authorship network of SOCIUM members.") +
+  theme_graph(base_family="sans")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Apart from a visual inspection, we can also calcualte the assortativity coefficient^[I use the assortativity coefficient for discrete characteristics as proposed by @newman2003, which takes the value 0 when there is no assortative mixing and 1 when there is complete assortativity.]:
+
+```{r assortativity}
+assort_coef <- net_soc %>% 
+  activate(nodes) %>% 
+  mutate(assort = graph_assortativity(dep_cat, directed = FALSE)) %>% 
+  pull(assort) %>% 
+  unique()
+```
+
+The coefficient for department assortativity is **`r round(assort_coef, 3)`**, meaning: co-authorship is far more prevalent within than between departments.
+
+
